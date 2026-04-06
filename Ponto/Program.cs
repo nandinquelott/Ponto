@@ -1,83 +1,59 @@
 ﻿using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-using SeleniumExtras.WaitHelpers;
-using WebDriverManager;
-using WebDriverManager.DriverConfigs.Impl;
+using Ponto.Config;
+using Ponto.Core;
+using Ponto.Services;
 
-class Program
+Settings settings = Settings.Load();
+IWebDriver? driver = null;
+
+TextWriter originalOut = Console.Out;
+TextWriter originalError = Console.Error;
+StreamWriter? fileWriter = null;
+
+try
 {
-    static void Main(string[] args)
-    {
-        new DriverManager().SetUpDriver(new ChromeConfig());
+    string logsDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
+    Directory.CreateDirectory(logsDirectory);
 
-        ChromeOptions chromeOptions = new ChromeOptions();
-        chromeOptions.AddArgument("--start-maximized");
-        IWebDriver driver = new ChromeDriver(chromeOptions);
+    string logFilePath = Path.Combine(logsDirectory, $"historico-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+    fileWriter = new StreamWriter(logFilePath, append: false) { AutoFlush = true };
 
-        try
-        {
-            driver.Navigate().GoToUrl("https://rp.fikdigital.com.br/");
+    Console.SetOut(new TeeTextWriter(originalOut, fileWriter));
+    Console.SetError(new TeeTextWriter(originalError, fileWriter));
 
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
-            Task.Delay(2000).Wait();
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Inicializando robô...");
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Histórico salvo em: {logFilePath}");
 
-            IWebElement loginField = wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath("//*[@id='login']")));
-            loginField.Clear();
-            loginField.SendKeys("");
+    driver = DriverFactory.CreateChromeDriver();
+    WaitHelper waitHelper = new(driver, TimeSpan.FromSeconds(settings.TimeoutSeconds));
 
-            IWebElement passwordField = wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath("//*[@id='password']/input")));
-            passwordField.Clear();
-            passwordField.SendKeys("");
+    PontoService pontoService = new(driver, waitHelper, settings);
+    pontoService.ExecutarRegistro();
 
-            IWebElement registerButton = wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath("//button[@aria-label='Registrar presença']")));
-            registerButton.Click();
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Robô concluído com sucesso.");
+}
+catch (WebDriverTimeoutException ex)
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] ERRO: Tempo limite excedido. {ex.Message}");
+}
+catch (NoSuchElementException ex)
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] ERRO: Elemento não encontrado. {ex.Message}");
+}
+catch (WebDriverException ex)
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] ERRO: Falha do Selenium WebDriver. {ex.Message}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] ERRO: Falha inesperada. {ex.Message}");
+}
+finally
+{
+    driver?.Quit();
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Navegador finalizado.");
 
-            (bool, IWebElement) sucesso = WaitElementSafe(By.XPath("//*[contains(text(), 'sucesso')]"), wait);
-            (bool, IWebElement) sucessoM = WaitElementSafe(By.XPath("//*[contains(text(), 'Sucesso')]"), wait);
-            if (sucesso.Item1 || sucessoM.Item1)
-            {
-                Screenshot screenshot = ((ITakesScreenshot)driver).GetScreenshot();
-
-                string directoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Ponto");
-                string fileName = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png";
-                string filePath = Path.Combine(directoryPath, fileName);
-
-                if (!Directory.Exists(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-
-                screenshot.SaveAsFile(filePath);
-                Console.WriteLine($"Screenshot salvo em: {filePath}");
-            }
-            else
-            {
-                Console.WriteLine("Elemento de sucesso não foi encontrado dentro do tempo limite.");
-            }            
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro: {ex.Message}");
-            Console.WriteLine(ex.StackTrace);
-        }
-        finally
-        {
-            driver.Quit();
-        }
-        Console.ReadKey();
-    }
-
-    private static (bool, IWebElement) WaitElementSafe(By by, WebDriverWait wait)
-    {
-        try
-        {
-            IWebElement successElement = wait.Until(ExpectedConditions.ElementIsVisible(by));
-            return (true, successElement);
-        }
-        catch (NoSuchElementException)
-        {
-            return (false, null);
-        }
-    }
+    Console.SetOut(originalOut);
+    Console.SetError(originalError);
+    fileWriter?.Dispose();
 }

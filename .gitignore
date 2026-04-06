@@ -1,63 +1,36 @@
-# Ignore build output
+# Build
 bin/
 obj/
 
-# User-specific files
-*.rsuser
-*.suo
+# Visual Studio
+.vs/
 *.user
+*.suo
 *.userosscache
 *.sln.docstates
 
-# Mono auto generated files
-mono_crash.*
-
-# Windows image file caches
-Thumbs.db
-ehthumbs.db
-
-# Folder config file
-Desktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# VS Code directory
-.vscode/
-
-# Visual Studio directories
-.vs/
-.vscode/
-.vsts/
-
-# ASP.NET Scaffolding
-ScaffoldingReadMe.txt
-
-# IIS Express folder
-IISExpress/
-
-# Node.js
-node_modules/
-
 # Logs
-*.log
+Ponto/Logs/
 
-# NuGet Packages
+# Publicação
+publish/
+*.pubxml
+*.pubxml.user
+
+# Pacotes NuGet
 *.nupkg
-# NuGet Symbol Packages
-*.snupkg
+packages/
 
-# Exclude build directories
-project.lock.json
-project.fragment.lock.json
+# Cobertura de testes
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
 
-# Diagnostic Reports
-*.dmp
-*.hprof
+# Variáveis de ambiente
+.env
+*.env.local
 
-# Rider project files
-.idea/
-*.sln.iml
-
-# Local history for IDEs
-.localhistory/
+# Sistema operacional
+Thumbs.db
+.DS_Store
